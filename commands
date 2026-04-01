@@ -1,0 +1,118 @@
+## Commnads to run this folders
+
+
+## WorkerNode should have the following:
+
+1.Assign EbsCsiPolicy driver role to workernode.
+
+2.Install Ebs drivers using helm in workstation using below commands.(To run the blelow command helm should be installed in workstation)
+
+## commands to install helm:
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+
+## commands to install EBS drivers:
+helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+helm repo update
+helm upgrade --install aws-ebs-csi-driver --namespace kube-system aws-ebs-csi-driver/aws-ebs-csi-driver
+
+
+## Install metrics server in workstation to measure the CPU & Ram of pods
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+Run the below command to see the CPU & RAM 
+kubectl top pods
+
+
+## Clone the repo
+git clone https://github.com/hari-palepu/25_Kubernetes_Databases.git
+
+
+## Install storageclass
+kubectl apply -f storageclass.yaml
+
+
+## Install Namespace
+kubectl apply -f namespace.yaml
+
+
+## To set custom namespace as default namespace then no need to give -n
+sudo git clone https://github.com/ahmetb/kubectx /opt/kubectx
+sudo ln -s /opt/kubectx/kubens /usr/local/bin/kubens
+kubens roboshop
+
+## Commnad to install K9S in workstation
+curl -sS https://webinstall.dev/k9s | bash
+
+
+## Install Mongodb
+helm install mongodb .
+helm uninstall mongodb - To uninstall the pod
+
+## Install Redis
+helm install redis .
+
+helm install mysql .
+
+helm install rabbitmq .
+
+helm install catalogue .
+
+helm install user .
+
+helm install cart .
+
+helm install payment .
+
+helm install shipping .
+
+
+
+
+## Ingress controller setup:
+
+## 1.Assign ec2 full access role to worker node.
+## 2.Allow all traaffic in worker node security group
+
+## 3.Install OpenID connect
+eksctl utils associate-iam-oidc-provider \
+    --region us-east-1 \
+    --cluster roboshop \
+    --approve
+	
+## 4.Downloading IAM policy
+curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.7.0/docs/install/iam_policy.json
+
+ 5.aws iam create-policy \
+    --policy-name AWSLoadBalancerControllerIAMPolicy \
+    --policy-document file://iam-policy.json
+	
+## 6.Replace with your aws account ID, clustername, region
+eksctl create iamserviceaccount \
+--cluster=roboshop \
+--namespace=kube-system \
+--name=aws-load-balancer-controller \
+--attach-policy-arn=arn:aws:iam::004316194461:policy/AWSLoadBalancerControllerIAMPolicy \
+--override-existing-serviceaccounts \
+--region us-east-1 \
+--approve
+
+7.helm repo add eks https://aws.github.io/eks-charts
+
+8.helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=roboshop --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller
+
+kubectl get pods -n kube-system
+cd web
+kubectl apply -f manifest.yaml
+kubectl get ingress -n robosho
+Create an a record and map to LB
+http://roboshop.haripalepu.cloud/
+
+
+
+## Command to apply load 
+Replace this with your LB ID in below command so that i can apply load on our LB. http://ab1ee0baa7ef743c4888e15825416090-1271223202.us-east-1.elb.amazonaws.com 
+
+kubectl run -i --tty load-generator --rm --image=busybox:1.28 --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://ab1ee0baa7ef743c4888e15825416090-1271223202.us-east-1.elb.amazonaws.com; done"
+
+kubectl get hpa
